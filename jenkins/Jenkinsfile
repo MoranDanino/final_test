@@ -1,13 +1,13 @@
 pipeline {
     agent {
         docker {
-            image 'docker:latest' 
+            image 'python:3.9-slim'  // Use an image with Python and pip
             args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
     
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('docker-hub-creds') 
+        DOCKERHUB_CREDENTIALS = credentials('docker-hub-creds')
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         IMAGE_NAME = 'morandan7/flask-aws-monitor'
     }
@@ -22,8 +22,9 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh '''
-                    pip install --upgrade pip
-                    pip install flake8 bandit
+                    apt-get update && apt-get install -y python3-pip
+                    pip3 install --upgrade pip
+                    pip3 install flake8 bandit
                 '''
             }
         }
