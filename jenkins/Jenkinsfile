@@ -45,7 +45,7 @@ pipeline {
                         echo 'Hadolint Dockerfile linting tests'
                         sh 'hadolint Dockerfile || true'
                         }
-                        echo 'Running ShellCheck linting tests'
+                        echo 'ShellCheck linting tests'
                         sh '''
                         find . -type f -name "*.sh" -exec shellcheck {} \\; || true
                         '''
