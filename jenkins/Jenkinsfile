@@ -22,15 +22,6 @@ pipeline {
                 git branch: 'jenkins', url: 'https://github.com/MoranDanino/final_test.git'
             }
         }
-
-    stage('Install tools for Linting and security stage') {
-            steps {
-                sh '''
-                    apt-get update 
-                    pip install flake8 bandit
-                '''
-            }
-        }
         
         stage('Parallel Checks') {
             parallel {
@@ -38,6 +29,7 @@ pipeline {
                     steps {
                         dir('docker') {
                         echo 'Flake8 linting tests'
+                        sh 'pip install flake8'
                         sh 'flake8 . || true'
                         }
                     }
@@ -46,6 +38,7 @@ pipeline {
                     steps {
                         dir('docker') {
                         echo 'Bandit security scan tests'
+                        sh 'pip install bandit'
                         sh 'bandit -r . || true'
                         }
                     }   
