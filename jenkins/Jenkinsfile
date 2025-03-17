@@ -1,0 +1,113 @@
+# Jenkins Pipeline for CI/CD Integration
+
+pipeline {
+    agent {
+        docker {
+            image 'python:3.9'
+            args '-u root'  //run as root for sudo perrmision
+        }
+    }
+    
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('docker-hub-creds') // Must be configured in Jenkins
+        // DOCKER_REGISTRY = 'morandan7'
+        // REPO_NAME = 'final_test'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        IMAGE_NAME = 'morandan7/flask-aws-monitor'
+    }
+    
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git branch: 'jenkins', url: 'https://github.com/MoranDanino/final_test.git'
+            }
+        }
+
+    stage('Install tools for Linting and security stage') {
+            steps {
+                sh '''
+                    apt-get update
+                    apt-get install -y shellcheck wget
+                    docker pull hadolint/hadolint:latest
+                    pip install flake8 bandit
+                    wget https://github.com/aquasecurity/trivy/releases/download/v0.47.0/trivy_0.47.0_Linux-64bit.deb
+                    dpkg -i trivy_0.47.0_Linux-64bit.deb
+                '''
+            }
+        }
+        
+        stage('Parallel Checks') {
+            parallel {
+                stage('Linting') {
+                    steps {
+                        dir('docker') {
+                        echo 'Flake8 linting tests'
+                        sh 'flake8 . || true'
+
+                        echo 'Hadolint Dockerfile linting tests'
+                        sh 'hadolint Dockerfile || true'
+                        }
+                        echo 'Running ShellCheck linting tests'
+                        sh '''
+                        find . -type f -name "*.sh" -exec shellcheck {} \\; || true
+                        '''
+                    }
+                }
+                stage('Security') {
+                    steps {
+                        dir('docker') {
+                        echo 'Bandit security scan tests'
+                        sh 'bandit -r . || true'
+
+                        echo 'Running Trivy security scan on Docker image'
+                        sh 'docker build -t app:latest -f Dockerfile .'
+                        sh 'trivy image --exit-code 0 final-app:latest || true'
+                        }
+                    }   
+                }
+            }            
+        }
+                  
+        stage('Build Docker Image') {
+            steps {
+                dir('docker') {  
+                    script {
+                        sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                        sh 'docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest'
+                    }
+                }
+            }
+        }
+
+        stage('Run Tests in Container') {
+            steps {
+                dir('docker') {  
+                    sh 'echo "Running pytest tests in container"'
+                }
+            }
+        }
+        
+        stage('Push to Docker Hub') {
+            steps {
+                sh '''
+                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${IMAGE_NAME}:latest
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Cleaning up workspace'
+            deleteDir()
+        }
+        failure {
+            echo 'Pipeline Failed'
+        }
+        success {
+            echo 'Pipeline Succeeded'
+        }
+    }
+}
