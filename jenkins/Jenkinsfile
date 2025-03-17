@@ -9,7 +9,7 @@ pipeline {
     }
     
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('docker-hub-creds') // Must be configured in Jenkins
+        DOCKERHUB_CREDENTIALS = credentials('dockerhubcred') // Must be configured in Jenkins
         // DOCKER_REGISTRY = 'morandan7'
         // REPO_NAME = 'final_test'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
@@ -23,16 +23,16 @@ pipeline {
             }
         }
 
-    // stage('Install Dependencies') {
-    //     steps {
-    //         sh '''
-    //             pip install --upgrade pip
-    //             pip install flake8 bandit
-    //             pip install flake8
-    //             pip install bandit
-    //         '''
-    //     }
-    // }
+    stage('Install Dependencies') {
+        steps {
+            sh '''
+                pip install --upgrade pip
+                pip install flake8 bandit
+                pip install flake8
+                pip install bandit
+            '''
+        }
+    }
 
         //mock the tests, the download not working even with upgrade pip.  
         stage('Parallel Checks') {
