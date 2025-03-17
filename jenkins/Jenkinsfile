@@ -54,13 +54,13 @@ pipeline {
         }
         stage('Build Docker Image') {
             steps {
-                dir('docker') {
+                //dir('docker') {
                     // script {
                     //     sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
                     //     sh 'docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest'
                     // }
-                    sh 'echo "moke build'
                 }
+                sh 'echo "moke build'
             }
         }
         stage('Run Tests in Container') {
