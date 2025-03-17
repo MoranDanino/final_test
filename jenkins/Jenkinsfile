@@ -9,7 +9,7 @@ pipeline {
     }
     
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhubcred') // Must be configured in Jenkins
+        DOCKERHUB_CREDENTIALS = credentials('docker-hub-creds') // Must be configured in Jenkins
         // DOCKER_REGISTRY = 'morandan7'
         // REPO_NAME = 'final_test'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
