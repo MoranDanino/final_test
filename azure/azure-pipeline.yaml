@@ -1,0 +1,143 @@
+trigger:
+  branches:
+    include:
+      - jenkins  # branch
+
+pool:
+  vmImage: 'Ubuntu-latest'
+
+# define variables
+variables:
+  DOCKERHUB_REGISTRY: 'morandan7'  
+  IMAGE_NAME: 'final-image'  
+  IMAGE_TAG: $(Build.BuildId) 
+  DOCKERFILE_PATH: '$(Build.SourcesDirectory)/docker/Dockerfile' 
+  BUILD_CONTEXT: '$(Build.SourcesDirectory)/docker'  
+  DOCKERHUB_CONNECTION: 'moran-dockerhubcred'  
+
+stages:
+  - stage: InstallDependencies
+    displayName: 'Install Dependencies'
+    jobs:
+      - job: InstallDeps
+        steps:
+          - script: |
+              ls -l
+              cd docker 
+              pip install -r requirements.txt  
+            displayName: 'Install python requirements and dependencies'
+
+  - stage: LintAndSecurityScan
+    displayName: 'Lint & Security Scan'
+    dependsOn: InstallDependencies
+    jobs:
+      - job: LintSecurity
+        displayName: 'Lint & Security Job'
+        steps:
+          # install required tools
+          - script: |
+              sudo apt-get update
+              sudo apt-get install -y shellcheck wget
+              sudo docker pull hadolint/hadolint:latest
+              pip install flake8 bandit
+              wget https://github.com/aquasecurity/trivy/releases/download/v0.47.0/trivy_0.47.0_Linux-64bit.deb
+              sudo dpkg -i trivy_0.47.0_Linux-64bit.deb
+            displayName: 'Install Linting and Security Tools'
+
+          # linting and security
+          - script: |
+              echo "Flake8 linting tests"
+              flake8 docker || true
+            displayName: 'Flake8 Linting'
+            workingDirectory: '$(Build.SourcesDirectory)'
+
+          - script: |
+              echo "ShellCheck linting tests"
+              shellcheck docker/*.sh || true
+            displayName: 'ShellCheck Linting'
+            workingDirectory: '$(Build.SourcesDirectory)'
+
+          - script: |
+              echo "Hadolint Dockerfile linting tests"
+              docker run --rm -v $(Build.SourcesDirectory):/work hadolint/hadolint:latest hadolint /work/docker/Dockerfile || true
+            displayName: 'Hadolint Dockerfile Linting'
+            workingDirectory: '$(Build.SourcesDirectory)'
+
+          - script: |
+              echo "Bandit security scan tests"
+              bandit -r docker || true
+            displayName: 'Bandit Security Scan'
+            workingDirectory: '$(Build.SourcesDirectory)'
+
+          - script: |
+              echo "Trivy security scan on filesystem"
+              trivy filesystem docker || true
+            displayName: 'Trivy Security Scan'
+            workingDirectory: '$(Build.SourcesDirectory)'
+
+  # mocked
+  - stage: RunTests
+    displayName: 'Run Unit Tests'
+    dependsOn: LintAndSecurityScan
+    jobs:
+      - job: TestContainer
+        steps:
+          - script: |
+              echo "Running mocked pytest unit tests"
+            displayName: 'Run Mocked Pytest Unit Tests'
+
+  # mocked
+  - stage: BuildAndPush
+    displayName: 'Build and Push Docker Image'
+    dependsOn: RunTests
+    jobs:
+      - job: BuildAndPushImage
+        steps:
+          - task: Docker@2
+            displayName: 'Login to Docker Hub'
+            inputs:
+              command: 'login'
+              containerRegistry: '$(DOCKERHUB_CONNECTION)' 
+
+          # Build Docker Image (commented out and mocked)
+          # - task: Docker@2
+          #   displayName: 'Build Docker Image'
+          #   inputs:
+          #     containerRegistry: '$(DOCKERHUB_CONNECTION)' 
+          #     repository: '$(DOCKERHUB_REGISTRY)/$(IMAGE_NAME)' 
+          #     command: 'build'
+          #     Dockerfile: '$(DOCKERFILE_PATH)'  
+          #     buildContext: '$(BUILD_CONTEXT)'  
+          #     tags: |
+          #       $(IMAGE_TAG)
+          #       latest
+          - script: |
+              echo "build"
+            displayName: 'Mocked Build Docker Image'
+
+          # Push Docker Image to Docker Hub (commented out and mocked)
+          # - task: Docker@2
+          #   displayName: 'Push Docker Image to Docker Hub'
+          #   inputs:
+          #     containerRegistry: '$(DOCKERHUB_CONNECTION)'  
+          #     repository: '$(DOCKERHUB_REGISTRY)/$(IMAGE_NAME)'  
+          #     command: 'push'
+          #     tags: |
+          #       $(IMAGE_TAG)
+          #       latest
+          - script: |
+              echo "push"
+            displayName: 'Mocked Push Docker Image'
+
+  #cleanup 
+  - stage: Cleanup
+    displayName: 'Cleanup Workspace'
+    dependsOn: BuildAndPush  
+    condition: always() 
+    jobs:
+      - job: Cleanup
+        steps:
+          - script: |
+              echo 'Cleaning up workspace'
+            displayName: 'Cleanup Files'
+            condition: always()
