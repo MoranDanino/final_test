@@ -12,6 +12,7 @@
     #depend on the builder- multistaging
     COPY --from=builder /app /app  
     #path packages we probably need
+    ENV PYTHONPATH="/app"
     COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages   
     EXPOSE 5001
     #env vars 
