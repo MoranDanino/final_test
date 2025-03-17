@@ -22,6 +22,16 @@ pipeline {
                 git branch: 'jenkins', url: 'https://github.com/MoranDanino/final_test.git'
             }
         }
+
+    stage('Install Dependencies') {
+        steps {
+            sh '''
+                echo "installing dependencies"
+                pip install --upgrade pip
+                pip install flake8 bandit
+            '''
+        }
+    }
         
         stage('Parallel Checks') {
             parallel {
@@ -29,8 +39,8 @@ pipeline {
                     steps {
                         dir('docker') {
                         echo 'Flake8 linting tests'
-                        //sh 'pip install flake8' #not working, I got error messeges in jenkins. did mock
-                        //sh 'flake8 . || true'
+                        sh 'pip install flake8' #not working, I got error messeges in jenkins. did mock
+                        sh 'flake8 . || true'
                         }
                     }
                 }
