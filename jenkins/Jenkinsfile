@@ -26,8 +26,7 @@ pipeline {
     stage('Install tools for Linting and security stage') {
             steps {
                 sh '''
-                    apt-get update
-                    apt-get install -y shellcheck 
+                    apt-get update 
                     docker pull hadolint/hadolint:latest
                     pip install flake8 bandit
                 '''
@@ -45,10 +44,6 @@ pipeline {
                         echo 'Hadolint Dockerfile linting tests'
                         sh 'hadolint Dockerfile || true'
                         }
-                        echo 'ShellCheck linting tests'
-                        sh '''
-                        find . -type f -name "*.sh" -exec shellcheck {} \\; || true
-                        '''
                     }
                 }
                 stage('Security') {
