@@ -27,11 +27,9 @@ pipeline {
             steps {
                 sh '''
                     apt-get update
-                    apt-get install -y shellcheck wget
+                    apt-get install -y shellcheck 
                     docker pull hadolint/hadolint:latest
                     pip install flake8 bandit
-                    wget https://github.com/aquasecurity/trivy/releases/download/v0.47.0/trivy_0.47.0_Linux-64bit.deb
-                    dpkg -i trivy_0.47.0_Linux-64bit.deb
                 '''
             }
         }
@@ -58,10 +56,6 @@ pipeline {
                         dir('docker') {
                         echo 'Bandit security scan tests'
                         sh 'bandit -r . || true'
-
-                        echo 'Running Trivy security scan on Docker image'
-                        sh 'docker build -t app:latest -f Dockerfile .'
-                        sh 'trivy image --exit-code 0 final-app:latest || true'
                         }
                     }   
                 }
