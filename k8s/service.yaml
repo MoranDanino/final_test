@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: final-test-service
+  # namespace: default  # Adjust if using a different namespace
+spec:
+  type: LoadBalancer  # Use LoadBalancer for cloud clusters; change to NodePort if needed
+  selector:
+    app: final-test  # Matches the label in the Deployment
+  ports:
+  - protocol: TCP
+    port: 80  # External port (e.g., http://<external-ip>:80)
+    targetPort: 5001  
+  
