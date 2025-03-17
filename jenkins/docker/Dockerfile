@@ -5,7 +5,7 @@
     # run packages we need
     RUN pip install --no-cache-dir -r requirements.txt
     #copy the app- update the app file name to the right:
-    COPY app.py .
+    COPY . .
     
     FROM python:3.9-slim 
     WORKDIR /app
