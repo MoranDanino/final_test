@@ -16,7 +16,6 @@ pipeline {
                 git branch: 'jenkins', url: 'https://github.com/MoranDanino/final_test.git'
             }
         }
-        
         stage('Install Dependencies') {
             steps {
                 sh '''
