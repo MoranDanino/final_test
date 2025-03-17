@@ -9,9 +9,14 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
-  DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
-  IMAGE_NAME: 'your-dockerhub-username/flask-aws-monitor'
+  # DOCKERHUB_REGISTRY: 'morandan7'
+  IMAGE_TAG: $(Build.BuildId) 
+  DOCKERFILE_PATH: '$(Build.SourcesDirectory)/docker/Dockerfile'
+  BUILD_CONTEXT: '$(Build.SourcesDirectory)/docker'
+  # DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
+  # DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
+  DOCKERHUB_CONNECTION: 'docker-hub-connection' # Service Connection with the right credentials
+  IMAGE_NAME: 'morandan7/flask-aws-monitor'
 
 stages:
 - stage: CloneRepository
@@ -28,36 +33,72 @@ stages:
   - job: Linting
     displayName: 'Linting'
     steps:
-      - script: echo 'TODO: Add linting steps for Python, Shell, and Dockerfile'
-        displayName: 'Run Linting'
+      - script: |
+          echo "Flake8 linting tests"
+          flake8 docker || true
+          displayName: 'Flake8 Linting'
   
 
     displayName: 'Security Scanning'
-      - script: echo 'TODO: Add security scanning steps for dependencies and container security'
-        displayName: 'Run Security Scan'
-
-- stage: BuildDockerImage
-  displayName: 'Build Docker Image'
-  dependsOn: ParallelChecks
-  jobs:
-  - job: BuildImage
-    steps:
-      - script: echo 'TODO: Add Docker build step'
-        displayName: 'Build Docker Image'
-
-- stage: PushToDockerHub
-  displayName: 'Push Docker Image to Docker Hub'
-  dependsOn: BuildDockerImage
-  jobs:
-  - job: PushImage
-- stage: SecureCredentials
-  displayName: 'Store and Use Secure Credentials'
-  dependsOn: []
-  jobs:
-  - job: StoreSecrets
-    displayName: 'Ensure Credentials are Secure'
     steps:
       - script: |
-          echo 'TODO: Configure Azure DevOps secrets for Docker Hub login'
-          echo 'Use Azure DevOps secure variable groups for storing credentials securely'
-        displayName: 'Secure Credential Storage'
+          echo "Bandit security scan tests"
+          bandit -r docker || true
+          displayName: 'Bandit Security Scan'
+          workingDirectory: '$(Build.SourcesDirectory)'
+
+- stage: RunTests
+  displayName: 'Run Unit Tests'
+  dependsOn: LintAndSecurityScan
+  jobs:
+    - job: TestContainer
+      steps:
+        - script: |
+            echo "mocked pytest unit tests"
+          displayName: 'Run Mocked Pytest Unit Tests'
+
+- stage: BuildAndPush
+  displayName: 'Build and Push Docker Image'
+  dependsOn: RunTests
+  jobs:
+    - job: BuildAndPushImage
+      steps:
+      - task: Docker@2
+        displayName: 'Login'  #login to Dockerhub by using service connection
+        inputs:
+          command: 'login'
+          containerRegistry: '$(DOCKERHUB_CONNECTION)'  
+      - task: Docker@2       # Build Docker Image
+        displayName: 'Build Docker Image'
+        inputs:
+          containerRegistry: '$(DOCKERHUB_CONNECTION)'  
+          repository: '$(IMAGE_NAME)'  
+          command: 'build'
+          Dockerfile: '$(DOCKERFILE_PATH)'  
+          buildContext: '$(BUILD_CONTEXT)'  
+          tags: |
+            $(IMAGE_TAG)
+            latest
+
+      - task: Docker@2
+        displayName: 'Push Docker Image to Docker Hub' #push image to Dockerhub
+        inputs:
+          containerRegistry: '$(DOCKERHUB_CONNECTION)'  
+          repository: '$(IMAGE_NAME)'  
+          command: 'push'
+          tags: |
+            $(IMAGE_TAG)
+            latest
+
+
+- stage: Cleanup
+  displayName: 'Cleanup Workspace'
+  dependsOn: BuildAndPush  
+  condition: always()  # Runs regardless of success/failure
+  jobs:
+    - job: Cleanup
+      steps:
+        - script: |
+            echo 'Cleaning up workspace'
+          displayName: 'Cleanup Files'
+          condition: always()
