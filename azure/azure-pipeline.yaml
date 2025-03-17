@@ -1,21 +1,16 @@
-# Azure DevOps Pipeline for CI/CD Integration
-
 trigger:
   branches:
     include:
-      - azure  #branch
+      - azure  # Branch
 
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  # DOCKERHUB_REGISTRY: 'morandan7'
-  IMAGE_TAG: $(Build.BuildId) 
+  IMAGE_TAG: $(Build.BuildId)
   DOCKERFILE_PATH: '$(Build.SourcesDirectory)/docker/Dockerfile'
   BUILD_CONTEXT: '$(Build.SourcesDirectory)/docker'
-  # DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
-  # DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
-  DOCKERHUB_CONNECTION: 'moran-dockerhub-connection' # Service Connection with the right credentials
+  DOCKERHUB_CONNECTION: 'moran-dockerhub-connection'  # Service Connection with credentials
   IMAGE_NAME: 'morandan7/flask-aws-monitor'
 
 stages:
@@ -24,37 +19,48 @@ stages:
   jobs:
   - job: Clone
     steps:
-    - checkout: self
+      - checkout: self
+
+- stage: InstallDependencies
+  displayName: 'Install Dependencies'
+  dependsOn: CloneRepository
+  jobs:
+    - job: Install
+      steps:
+        - script: |
+            echo "Installing Python dependencies"
+            python -m pip install --upgrade pip
+            pip install flake8 bandit
+          displayName: 'Install Flake8 & Bandit'
 
 - stage: ParallelChecks
   displayName: 'Parallel Linting & Security Checks'
-  dependsOn: CloneRepository
+  dependsOn: InstallDependencies
   jobs:
-  - job: Linting
-    displayName: 'Linting'
-    steps:
-      - script: |
-          echo "Flake8 linting tests"
-          flake8 docker || true
+    - job: Linting
+      displayName: 'Linting'
+      steps:
+        - script: |
+            echo "Running Flake8 Linting"
+            flake8 docker --count --select=E9,F63,F7,F82 --show-source --statistics
           displayName: 'Flake8 Linting'
-  
 
-    displayName: 'Security Scanning'
-    steps:
-      - script: |
-          echo "Bandit security scan tests"
-          bandit -r docker || true
+    - job: SecurityScan
+      displayName: 'Security Scanning'
+      steps:
+        - script: |
+            echo "Running Bandit Security Scan"
+            bandit -r docker
           displayName: 'Bandit Security Scan'
-          workingDirectory: '$(Build.SourcesDirectory)'
 
 - stage: RunTests
   displayName: 'Run Unit Tests'
-  dependsOn: LintAndSecurityScan
+  dependsOn: ParallelChecks
   jobs:
     - job: TestContainer
       steps:
         - script: |
-            echo "mocked pytest unit tests"
+            echo "Mocked pytest unit tests"
           displayName: 'Run Mocked Pytest Unit Tests'
 
 - stage: BuildAndPush
@@ -64,36 +70,36 @@ stages:
     - job: BuildAndPushImage
       steps:
       - task: Docker@2
-        displayName: 'Login'  #login to Dockerhub by using service connection
+        displayName: 'Login to Docker Hub'
         inputs:
           command: 'login'
-          containerRegistry: '$(DOCKERHUB_CONNECTION)'  
-      - task: Docker@2       # Build Docker Image
+          containerRegistry: '$(DOCKERHUB_CONNECTION)'
+
+      - task: Docker@2
         displayName: 'Build Docker Image'
         inputs:
-          containerRegistry: '$(DOCKERHUB_CONNECTION)'  
-          repository: '$(IMAGE_NAME)'  
+          containerRegistry: '$(DOCKERHUB_CONNECTION)'
+          repository: '$(IMAGE_NAME)'
           command: 'build'
-          Dockerfile: '$(DOCKERFILE_PATH)'  
-          buildContext: '$(BUILD_CONTEXT)'  
+          Dockerfile: '$(DOCKERFILE_PATH)'
+          buildContext: '$(BUILD_CONTEXT)'
           tags: |
             $(IMAGE_TAG)
             latest
 
       - task: Docker@2
-        displayName: 'Push Docker Image to Docker Hub' #push image to Dockerhub
+        displayName: 'Push Docker Image to Docker Hub'
         inputs:
-          containerRegistry: '$(DOCKERHUB_CONNECTION)'  
-          repository: '$(IMAGE_NAME)'  
+          containerRegistry: '$(DOCKERHUB_CONNECTION)'
+          repository: '$(IMAGE_NAME)'
           command: 'push'
           tags: |
             $(IMAGE_TAG)
             latest
 
-
 - stage: Cleanup
   displayName: 'Cleanup Workspace'
-  dependsOn: BuildAndPush  
+  dependsOn: BuildAndPush
   condition: always()  # Runs regardless of success/failure
   jobs:
     - job: Cleanup
