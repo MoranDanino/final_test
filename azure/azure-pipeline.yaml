@@ -1,0 +1,63 @@
+# Azure DevOps Pipeline for CI/CD Integration
+
+trigger:
+  branches:
+    include:
+      - azure  #branch
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
+  DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
+  IMAGE_NAME: 'your-dockerhub-username/flask-aws-monitor'
+
+stages:
+- stage: CloneRepository
+  displayName: 'Clone Repository'
+  jobs:
+  - job: Clone
+    steps:
+    - checkout: self
+
+- stage: ParallelChecks
+  displayName: 'Parallel Linting & Security Checks'
+  dependsOn: CloneRepository
+  jobs:
+  - job: Linting
+    displayName: 'Linting'
+    steps:
+      - script: echo 'TODO: Add linting steps for Python, Shell, and Dockerfile'
+        displayName: 'Run Linting'
+  
+
+    displayName: 'Security Scanning'
+      - script: echo 'TODO: Add security scanning steps for dependencies and container security'
+        displayName: 'Run Security Scan'
+
+- stage: BuildDockerImage
+  displayName: 'Build Docker Image'
+  dependsOn: ParallelChecks
+  jobs:
+  - job: BuildImage
+    steps:
+      - script: echo 'TODO: Add Docker build step'
+        displayName: 'Build Docker Image'
+
+- stage: PushToDockerHub
+  displayName: 'Push Docker Image to Docker Hub'
+  dependsOn: BuildDockerImage
+  jobs:
+  - job: PushImage
+- stage: SecureCredentials
+  displayName: 'Store and Use Secure Credentials'
+  dependsOn: []
+  jobs:
+  - job: StoreSecrets
+    displayName: 'Ensure Credentials are Secure'
+    steps:
+      - script: |
+          echo 'TODO: Configure Azure DevOps secrets for Docker Hub login'
+          echo 'Use Azure DevOps secure variable groups for storing credentials securely'
+        displayName: 'Secure Credential Storage'
