@@ -15,7 +15,7 @@ variables:
   BUILD_CONTEXT: '$(Build.SourcesDirectory)/docker'
   # DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
   # DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
-  DOCKERHUB_CONNECTION: 'docker-hub-connection' # Service Connection with the right credentials
+  DOCKERHUB_CONNECTION: 'moran-dockerhub-connection' # Service Connection with the right credentials
   IMAGE_NAME: 'morandan7/flask-aws-monitor'
 
 stages:
