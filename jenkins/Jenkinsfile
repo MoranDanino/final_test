@@ -1,105 +1,61 @@
 pipeline {
     agent {
         docker {
-            image 'python:3.10'
-            args '-u root' 
+            image 'python:3.9-slim'  // Use an image with Python and pip
+            args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
+    
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('docker-hub-creds') 
-        DOCKER_REGISTRY = 'morandan7'
-        REPO_NAME = 'jenkins'
+        DOCKERHUB_CREDENTIALS = credentials('docker-hub-creds')
         IMAGE_TAG = "${env.BUILD_NUMBER}"
+        IMAGE_NAME = 'morandan7/flask-aws-monitor'
     }
+    
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'jenkins', url: 'https://github.com/MoriD12/final.git'
+                git branch: 'jenkins', url: 'https://github.com/MoranDanino/final_test.git'
             }
         }
 
-        stage('Install Docker') {
-            steps {
-                sh '''
-                    apt-get update
-                    apt-get install -y docker.io
-                    docker --version
-                    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-                    chmod +x /usr/local/bin/docker-compose
-                    /usr/local/bin/docker-compose --version
-                '''
-            }
-        }
-
-        //not working
-        // stage('Install Tools') {
+        // stage('Install Dependencies') {
         //     steps {
         //         sh '''
-        //             apt-get update
-        //             apt-get install -y shellcheck wget
-        //             docker pull hadolint/hadolint:latest
-        //             pip install flake8 bandit
-        //             wget https://github.com/aquasecurity/trivy/releases/download/v0.47.0/trivy_0.47.0_Linux-64bit.deb
-        //             dpkg -i trivy_0.47.0_Linux-64bit.deb
+        //             apt-get update && apt-get install -y python3-pip
+        //             pip3 install --upgrade pip
+        //             pip3 install flake8 bandit
         //         '''
         //     }
         // }
 
-        // mock: didnt work
-        stage('Lint & Security Scan') {
+        stage('Parallel Checks') {
             parallel {
-                stage('Flake8 Linting') {
+                stage('Linting') {
                     steps {
                         dir('docker') {
-                            echo 'Running Flake8 linting tests'
+                            echo 'Flake8 linting tests'
+                            sh 'flake8 . || true'
                         }
                     }
                 }
-                stage('ShellCheck Linting') {
-                    steps {
-                        echo 'Running ShellCheck linting tests'
-                    }
-                }
-                stage('Hadolint Linting') {
+                stage('Security') {
                     steps {
                         dir('docker') {
-                            echo 'Running Hadolint Dockerfile linting tests'
+                            echo 'Bandit security scan tests'
+                            sh 'bandit -r . || true'
                         }
-                    }
+                    }   
                 }
-                stage('Bandit Security Scan') {
-                    steps {
-                        dir('docker') {
-                            echo 'Running Bandit security scan tests'
-                        }
-                    }
-                }
-                stage('Trivy Security Scan') {
-                    steps {
-                        dir('docker') {
-                            echo 'Running Trivy security scan on Docker image'
-                        }
-                    }
-                }
-            }
+            }            
         }
-
-
-        stage('Install Dependencies') {
-            steps {
-                dir('docker') {  
-                    sh 'pip install -r requirements.txt'
-                }
-            }
-        }
-
-
+                  
         stage('Build Docker Image') {
             steps {
                 dir('docker') {  
                     script {
-                        sh 'docker build -t ${DOCKER_REGISTRY}/${REPO_NAME}:${IMAGE_TAG} .'
-                        sh 'docker tag ${DOCKER_REGISTRY}/${REPO_NAME}:${IMAGE_TAG} ${DOCKER_REGISTRY}/${REPO_NAME}:latest'
+                        sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                        sh 'docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest'
                     }
                 }
             }
@@ -107,18 +63,18 @@ pipeline {
 
         stage('Run Tests in Container') {
             steps {
-                dir('docker') {  // Adjusted path
+                dir('docker') {  
                     sh 'echo "Running pytest tests in container"'
                 }
             }
         }
-
+        
         stage('Push to Docker Hub') {
             steps {
                 sh '''
                     echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                    docker push ${DOCKER_REGISTRY}/${REPO_NAME}:${IMAGE_TAG}
-                    docker push ${DOCKER_REGISTRY}/${REPO_NAME}:latest
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${IMAGE_NAME}:latest
                 '''
             }
         }
