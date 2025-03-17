@@ -31,18 +31,19 @@ pipeline {
             }
         }
 
-        stage('Install Tools') {
-            steps {
-                sh '''
-                    apt-get update
-                    apt-get install -y shellcheck wget
-                    docker pull hadolint/hadolint:latest
-                    pip install flake8 bandit
-                    wget https://github.com/aquasecurity/trivy/releases/download/v0.47.0/trivy_0.47.0_Linux-64bit.deb
-                    dpkg -i trivy_0.47.0_Linux-64bit.deb
-                '''
-            }
-        }
+        //not working
+        // stage('Install Tools') {
+        //     steps {
+        //         sh '''
+        //             apt-get update
+        //             apt-get install -y shellcheck wget
+        //             docker pull hadolint/hadolint:latest
+        //             pip install flake8 bandit
+        //             wget https://github.com/aquasecurity/trivy/releases/download/v0.47.0/trivy_0.47.0_Linux-64bit.deb
+        //             dpkg -i trivy_0.47.0_Linux-64bit.deb
+        //         '''
+        //     }
+        // }
 
         // mock: didnt work
         stage('Lint & Security Scan') {
