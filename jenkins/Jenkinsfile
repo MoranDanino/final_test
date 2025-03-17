@@ -31,6 +31,17 @@ pipeline {
                 '''
             }
         }
+        stage('Check Directory Contents') {  // New debugging stage
+            steps {
+                dir('docker') {
+                    sh '''
+                        pwd  # Print current directory
+                        ls -la  # List all files in docker/
+                        cat Dockerfile || echo "Dockerfile not found or empty"
+                    '''
+                }
+            }
+        }
         stage('Parallel Checks') {
             parallel {
                 stage('Linting') {
