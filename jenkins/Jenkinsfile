@@ -1,35 +1,31 @@
 pipeline {
     agent {
         docker {
-            image 'python:3.9-slim'  // Use an image with Python and pip
+            image 'python:3.9-slim'
             args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
-    
     environment {
         DOCKERHUB_CREDENTIALS = credentials('docker-hub-creds')
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         IMAGE_NAME = 'morandan7/flask-aws-monitor'
     }
-    
     stages {
         stage('Clone Repository') {
             steps {
                 git branch: 'jenkins', url: 'https://github.com/MoranDanino/final_test.git'
             }
         }
-
-        // stage('Install Dependencies') {
-        //     steps {
-        //         sh '''
-                    
-        //             apt-get update && apt-get install -y python3-pip
-        //             pip3 install --upgrade pip
-        //             pip3 install flake8 bandit
-        //         '''
-        //     }
-        // }
-
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    apt-get update
+                    apt-get install -y docker.io
+                    pip3 install --upgrade pip
+                    pip3 install flake8 bandit
+                '''
+            }
+        }
         stage('Parallel Checks') {
             parallel {
                 stage('Linting') {
@@ -46,14 +42,13 @@ pipeline {
                             echo 'Bandit security scan tests'
                             sh 'bandit -r . || true'
                         }
-                    }   
+                    }
                 }
-            }            
+            }
         }
-                  
         stage('Build Docker Image') {
             steps {
-                dir('docker') {  
+                dir('docker') {
                     script {
                         sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
                         sh 'docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest'
@@ -61,15 +56,13 @@ pipeline {
                 }
             }
         }
-
         stage('Run Tests in Container') {
             steps {
-                dir('docker') {  
+                dir('docker') {
                     sh 'echo "Running pytest tests in container"'
                 }
             }
         }
-        
         stage('Push to Docker Hub') {
             steps {
                 sh '''
@@ -80,7 +73,6 @@ pipeline {
             }
         }
     }
-
     post {
         always {
             echo 'Cleaning up workspace'
