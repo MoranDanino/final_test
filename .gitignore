@@ -2,6 +2,6 @@ aws/
 awscliv2.zip
 .terraform*
 *.tfstate*
-**volume**
-welcome/volume
-**set_jenkins**
+# **volume**
+# welcome/volume
+# **set_jenkins**
